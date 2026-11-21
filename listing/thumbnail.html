@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><title>thumbnail</title>
+<style>
+  html, body { margin: 0; }
+  body { width: 1220px; height: 1240px; font-family: "WenQuanYi Zen Hei", "Noto Sans CJK JP", sans-serif;
+    background: linear-gradient(160deg, #0f6b4f 0%, #1aa37a 100%); color: #fff; position: relative; overflow: hidden; }
+  .grid { position: absolute; left: 110px; right: 110px; top: 120px; height: 360px; background: #fff; border-radius: 24px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.25); display: grid; grid-template-columns: 1.4fr 1fr 1fr; grid-template-rows: repeat(4, 1fr); overflow: hidden; }
+  .grid div { border: 1px solid #d8e3df; color: #0f6b4f; font-size: 34px; padding: 0 28px; display: flex; align-items: center; }
+  .grid .h { background: #e3f4ee; font-weight: 700; }
+  .arrow { position: absolute; top: 500px; left: 0; right: 0; text-align: center; font-size: 90px; line-height: 1; }
+  h1 { position: absolute; top: 640px; left: 0; right: 0; margin: 0; text-align: center; font-size: 118px; line-height: 1.25; text-shadow: 0 6px 18px rgba(0,0,0,.3); }
+  p { position: absolute; top: 960px; left: 0; right: 0; margin: 0; text-align: center; font-size: 52px; }
+  .band { position: absolute; left: 0; right: 0; bottom: 0; height: 150px; background: #ffd23f; color: #12332a; display: flex; align-items: center; justify-content: center; font-size: 64px; font-weight: 700; }
+</style></head><body>
+  <div class="grid">
+    <div class="h">日付</div><div class="h">担当</div><div class="h">金額</div>
+    <div>11/01</div><div>山田</div><div>12,000</div>
+    <div>11/02</div><div>佐藤</div><div>8,500</div>
+    <div>11/03</div><div>鈴木</div><div>15,300</div>
+  </div>
+  <div class="arrow">▼</div>
+  <h1>スプレッドシート<br>作業を自動化</h1>
+  <p>GAS で転記・集計・通知をおまかせ</p>
+  <div class="band">手順書つき｜相談無料</div>
+</body></html>
