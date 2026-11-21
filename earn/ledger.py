@@ -12,7 +12,7 @@ FEE_RATE = FEE_RATE_PERCENT / 100
 DAILY_TARGET = 1000
 _REFERENCE_PRICE = 5000
 
-_SALE_RE = re.compile(r"\[売上\]\s*([0-9][0-9,]*)")
+_SALE_RE = re.compile(r"\[売上\]\s*¥?\s*([0-9][0-9,]*)\s*円?\s*$")
 
 
 def net(gross: int) -> int:
@@ -21,7 +21,10 @@ def net(gross: int) -> int:
 
 def parse_sale(subject: str):
     m = _SALE_RE.search(unicodedata.normalize("NFKC", subject))
-    return int(m.group(1).replace(",", "")) if m else None
+    if not m:
+        return None
+    amount = int(m.group(1).replace(",", ""))
+    return amount or None  # 0円は売上として数えない
 
 
 def summary(sales, today: date, window_days: int = 30) -> dict:

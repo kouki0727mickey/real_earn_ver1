@@ -21,7 +21,7 @@ function toYearMonth_(v) {
 
 function toNumber_(v) {
   if (typeof v === 'number') return v;
-  const s = String(v).replace(/[,\s]/g, '');
+  const s = String(v).replace(/[,\s¥￥円]/g, '');
   return s === '' ? NaN : Number(s);
 }
 
@@ -33,11 +33,15 @@ function buildMonthlySummary() {
   const rows = lastRow < 2 ? [] : data.getRange(2, 1, lastRow - 1, width).getValues();
 
   const totals = {};
+  let skipped = 0;
   rows.forEach((row) => {
     const ym = toYearMonth_(row[CONFIG.dateColumn - 1]);
     const category = row[CONFIG.categoryColumn - 1];
     const amount = toNumber_(row[CONFIG.amountColumn - 1]);
-    if (ym === null || category === '' || isNaN(amount)) return;
+    if (ym === null || category === '' || isNaN(amount)) {
+      if (row.some((c) => c !== '')) skipped++;   // 空行は数えない
+      return;
+    }
     const key = ym + '\t' + category;
     totals[key] = (totals[key] || 0) + amount;
   });
@@ -50,6 +54,8 @@ function buildMonthlySummary() {
 
   const summary = book.getSheetByName(CONFIG.summarySheet) || book.insertSheet(CONFIG.summarySheet);
   summary.clear();
+  summary.getRange(1, 1, out.length, 1).setNumberFormat('@'); // 年月を日付に自動変換させない
   summary.getRange(1, 1, out.length, 3).setValues(out);
+  if (skipped > 0) Logger.log('スキップした行: ' + skipped + '行（日付・区分・金額が読めませんでした）');
   return body.length;
 }

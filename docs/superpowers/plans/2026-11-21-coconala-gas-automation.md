@@ -314,7 +314,7 @@ CLAUDE.md を読み、playbooks/fulfil.md、続けて playbooks/propose.md を�
 - [ ] **Step 2: 週次タスクを作る** — name `RE1 週次レビュー`、cron `CRON_TZ=Asia/Tokyo 43 20 * * 0`、他は同じ。prompt は上の2行目を「playbooks/weekly-review.md を上から順にそのまま実行する。」に替えたもの。
 - [ ] **Step 3: 通し確認の準備（人間）** — 自分の Gmail から自分宛てに、件名 `[依頼] テスト`、本文に `fixtures/request-clear.md` の文面を貼って送る。もう1通、件名 `[売上] 3000`、本文なしで送る。
 - [ ] **Step 4: 発火して確かめる** — `fire_trigger` で両タスクを1回ずつ動かす。`list_triggers` の `last_run.status` が SUCCEEDED。Gmail の下書きに `[納品案]` が1通（5節あり）と `[週次]` が1通（orders 1、net 2340、daily_avg_net 78.0）。`[依頼] テスト` に `RE1/処理済` が付いている。
-- [ ] **Step 5: 二重処理が無いことを確かめる** — 納品タスクをもう一度 `fire_trigger`。新しい下書きが増えず「対象なし」で終わる。
+- [ ] **Step 5: 二重処理が無いことを確かめる** — 納品タスクをもう一度 `fire_trigger`。新しい下書きが増えず「対象なし」で終わる。さらに、件名に「依頼」を含む下書き（例: 自分で `[お断り案] スクレイピング依頼` を下書き保存）を1通置いてから再発火し、その下書きが再処理されない（`-in:drafts` と接頭辞の条件）ことも確かめる。
 - [ ] **Step 6: 失敗時の切り分け** — 新規セッションでリポジトリを読めない場合は `read_documentation`（topic `github.access`）に従う。Gmail が使えない場合は `create_trigger` の結果に出るコネクタ警告を人間にそのまま伝える。どちらも直らなければ、同じ prompt で `create_new_session_on_fire` を外し、このセッションに発火させる形に作り直す。
 - [ ] **Step 7: 後片付け（人間）** — テストの下書き2通と `[売上] 3000` のテストメールを削除する（残すと週次集計に入る）。
 

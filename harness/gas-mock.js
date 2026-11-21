@@ -23,7 +23,19 @@ function pad(data) {
   data.forEach((r) => { while (r.length < width) r.push(''); });
 }
 
+const isDate = (v) => Object.prototype.toString.call(v) === '[object Date]';
+
+function checkRangeArgs(row, col, nr, nc) {
+  if (typeof row === 'string') {
+    throw new Error('gas-mock: getRange: A1表記は未対応です。getRange(行, 列, 行数, 列数) を使ってください');
+  }
+  if (![row, col, nr, nc].every((n) => Number.isInteger(n) && n >= 1)) {
+    throw new Error(`gas-mock: getRange(${row}, ${col}, ${nr}, ${nc}) は不正です（すべて1以上の整数が必要。見出しだけのシートの getLastRow()-1 は 0 になるので注意）`);
+  }
+}
+
 function makeRange(env, name, row, col, nr, nc) {
+  checkRangeArgs(row, col, nr, nc);
   const data = () => env.sheets[name];
   return {
     getValues() {
@@ -33,7 +45,8 @@ function makeRange(env, name, row, col, nr, nc) {
         const r = [];
         for (let j = 0; j < nc; j++) {
           const v = (d[row - 1 + i] || [])[col - 1 + j];
-          r.push(v === undefined ? '' : v);
+          // 日付は sandbox の Date に変換する（GAS の `instanceof Date` が true になるように）
+          r.push(v === undefined ? '' : (isDate(v) ? new env.GasDate(v.getTime()) : v));
         }
         out.push(r);
       }
@@ -49,9 +62,13 @@ function makeRange(env, name, row, col, nr, nc) {
       for (let i = 0; i < nr; i++) {
         const r = d[row - 1 + i];
         while (r.length < col - 1 + nc) r.push('');
-        for (let j = 0; j < nc; j++) r[col - 1 + j] = vals[i][j];
+        for (let j = 0; j < nc; j++) r[col - 1 + j] = isDate(vals[i][j]) ? new Date(vals[i][j].getTime()) : vals[i][j];
       }
       pad(d);
+    },
+    setNumberFormat(format) {
+      env.numberFormats.push({ sheet: name, row, col, nr, nc, format });
+      return this;
     },
     setValue(v) { this.setValues([[v]]); },
     clearContent() {
@@ -78,7 +95,7 @@ function makeSheet(env, name) {
       const d = data();
       const at = lastRowOf(d);
       d.length = at; // 末尾の空行を捨てて直後に追加
-      d.push(Array.from(arr)); // vm 内の配列を本体側の配列に変換する
+      d.push(Array.from(arr, (v) => (isDate(v) ? new Date(v.getTime()) : v))); // vm 内の配列を本体側へ
       pad(d);
     },
     clear() { env.sheets[name] = []; },
@@ -100,7 +117,7 @@ function formatDate(date, tz, fmt) {
 }
 
 function createGasEnv({ sheets = {}, now } = {}) {
-  return { sheets, now, sentMails: [], logs: [] };
+  return { sheets, now, sentMails: [], logs: [], numberFormats: [] };
 }
 
 function buildContext(env) {
@@ -114,7 +131,10 @@ function buildContext(env) {
       return makeSheet(env, n);
     },
   };
-  const sendEmail = (to, subject, body) => { env.sentMails.push({ to, subject, body }); };
+  const sendEmail = (to, subject, body) => {
+    if (to !== null && typeof to === 'object') ({ to, subject, body } = to); // sendEmail({to, subject, body}) 形式
+    env.sentMails.push({ to, subject, body });
+  };
   const log = (...a) => { env.logs.push(a.join(' ')); };
   const sandbox = {
     SpreadsheetApp: { getActiveSpreadsheet: () => book, getActive: () => book },
@@ -131,13 +151,12 @@ function buildContext(env) {
       apply() { throw new Error(`gas-mock: 未対応API ${name}`); },
     });
   }
-  if (env.now) {
-    const fixed = env.now.getTime();
-    sandbox.Date = class extends Date {
-      constructor(...a) { if (a.length === 0) super(fixed); else super(...a); }
-      static now() { return fixed; }
-    };
-  }
+  const fixed = env.now ? env.now.getTime() : null;
+  sandbox.Date = class extends Date {
+    constructor(...a) { if (a.length === 0 && fixed !== null) super(fixed); else super(...a); }
+    static now() { return fixed !== null ? fixed : Date.now(); }
+  };
+  env.GasDate = sandbox.Date;
   return vm.createContext(sandbox);
 }
 

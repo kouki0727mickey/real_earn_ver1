@@ -44,3 +44,11 @@ def test_cli_prints_json_and_warns_on_unparseable_line():
     assert r.returncode == 0
     assert json.loads(r.stdout)["orders"] == 1
     assert "WARN" in r.stderr
+
+
+def test_parse_sale_rejects_ambiguous_amounts_instead_of_guessing():
+    assert parse_sale("[売上] 5千円") is None
+    assert parse_sale("[売上] 12/20 5000") is None
+    assert parse_sale("[売上] 0") is None
+    assert parse_sale("[売上] 5000円") == 5000
+    assert parse_sale("[売上] ¥5,000") == 5000

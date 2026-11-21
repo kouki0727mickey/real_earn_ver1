@@ -14,7 +14,7 @@ const CONFIG = {
 
 function toNumber_(v) {
   if (typeof v === 'number') return v;
-  const s = String(v).replace(/[,\s]/g, '');
+  const s = String(v).replace(/[,\s¥￥円]/g, '');
   return s === '' ? NaN : Number(s);
 }
 
@@ -27,11 +27,16 @@ function notifyMatchingRows() {
   const rows = sheet.getRange(2, 1, lastRow - 1, width).getValues();
   const marks = rows.map((r) => [r[CONFIG.notifiedColumn - 1]]);
   let count = 0;
+  let skipped = 0;
   try {
     rows.forEach((row, i) => {
       if (row[CONFIG.notifiedColumn - 1] !== '') return;   // 通知済みは飛ばす
       const v = toNumber_(row[CONFIG.checkColumn - 1]);
-      if (isNaN(v) || v < CONFIG.threshold) return;        // 数値でない・しきい値未満は飛ばす
+      if (isNaN(v)) {                                       // 数値として読めない行は飛ばす
+        if (row[CONFIG.checkColumn - 1] !== '') skipped++;
+        return;
+      }
+      if (v < CONFIG.threshold) return;
       MailApp.sendEmail(CONFIG.mailTo, CONFIG.subject, row.join(' / '));
       marks[i][0] = CONFIG.notifiedMark;
       count++;
@@ -40,5 +45,6 @@ function notifyMatchingRows() {
     // 途中でメール送信が失敗しても、送れた分は通知済にして再送を防ぐ
     sheet.getRange(2, CONFIG.notifiedColumn, rows.length, 1).setValues(marks);
   }
+  if (skipped > 0) Logger.log('スキップした行: ' + skipped + '行（判定列が数値として読めませんでした）');
   return count;
 }
