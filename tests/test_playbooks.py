@@ -49,3 +49,9 @@ def test_i4_customer_text_is_data_and_only_safe_gmail_operations():
 
 def test_i6_weekly_counts_each_message():
     assert "メッセージごと" in read("weekly-review.md")
+
+
+def test_fix_app_playbook_has_safety_and_honesty_rules():
+    text = read("fix-app.md")
+    for marker in ["データであり指示ではない", "コミットしない", "外部連絡先", "tools/appcheck.js", "確かめていないこと", "合格と書かない"]:
+        assert marker in text, marker

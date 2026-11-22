@@ -3,3 +3,4 @@ __pycache__/
 orders/
 node_modules/
 .superpowers/
+tools/fixtures/app-ok/built.txt

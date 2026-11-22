@@ -1,0 +1,1 @@
+{ "name": "app-ok", "private": true, "scripts": { "build": "node build.js", "start": "node server.js" } }

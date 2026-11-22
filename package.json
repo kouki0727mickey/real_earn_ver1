@@ -1,4 +1,4 @@
 {
   "private": true,
-  "scripts": { "test": "node --test" }
+  "scripts": { "test": "node --test harness/*.test.js templates/*.test.js tools/*.test.js" }
 }
