@@ -1,0 +1,31 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>case</title><style>
+html,body{margin:0}body{width:1600px;height:1000px;font-family:"WenQuanYi Zen Hei",sans-serif;background:#f3f5fb;color:#1b2340;position:relative}
+h1{margin:0;padding:44px 60px 8px;font-size:52px}.sub{padding:0 60px;font-size:26px;color:#5b6488}
+.col{position:absolute;top:190px;width:700px;height:690px;border-radius:20px;box-sizing:border-box;padding:30px 34px}
+.b{left:60px;background:#12163a;color:#c9d1ff}.a{right:60px;background:#fff;border:3px solid #1d7a46}
+.tag{font-size:30px;font-weight:700;margin-bottom:18px}.b .tag{color:#ff7b7b}.a .tag{color:#1d7a46}
+pre{font-size:21px;line-height:1.55;white-space:pre-wrap;margin:0;font-family:monospace}
+.a li{font-size:26px;line-height:1.9}.a img{width:100%;border:1px solid #d5daea;border-radius:8px;margin-top:10px;height:230px;object-fit:cover;object-position:top}
+.mid{position:absolute;top:500px;left:770px;font-size:60px;color:#4a5fd0}
+.foot{position:absolute;bottom:34px;left:60px;right:60px;font-size:24px;color:#5b6488}
+</style></head><body>
+<h1>修正の実例: 公開できない Next.js アプリ</h1>
+<div class="sub">検証用に用意したサンプルアプリでの実施例です（お客様の案件ではありません）</div>
+<div class="col b"><div class="tag">修正前: 不合格</div><pre>ビルド: failed
+
+app/dashboard/page.tsx(7,42)
+error TS2339: Property 'toUpperCase'
+does not exist on type 'number'.
+
+app/page.tsx:10
+TypeError: Cannot read properties
+of null (reading 'profile')
+
+危険: NEXT_PUBLIC_STRIPE_SECRET_KEY
+秘密の鍵がブラウザから見える名前</pre></div>
+<div class="mid">▶</div>
+<div class="col a"><div class="tag">修正後: 合格</div><ul>
+<li>ビルド: passed</li><li>/ : HTTP 200、問題 0 件</li><li>/dashboard : HTTP 200、問題 0 件</li><li>秘密の鍵の公開: 解消</li></ul>
+<img src="after.png"></div>
+<div class="foot">原因を3件特定して修正し、同じ検査をもう一度通して確認。検査レポートと画面の画像を納品物に含めます。</div>
+</body></html>

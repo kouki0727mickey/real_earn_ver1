@@ -68,6 +68,35 @@ function scanSecrets(dir) {
   return hits;
 }
 
+function walkSql(dir, out = []) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (e.isDirectory()) { if (!SKIP_DIRS.has(e.name)) walkSql(path.join(dir, e.name), out); }
+    else if (/\.sql$/i.test(e.name)) out.push(path.join(dir, e.name));
+  }
+  return out;
+}
+
+// Supabase のよくある事故: RLS（行レベルセキュリティ）なしのテーブルと、ブラウザ側での service_role 鍵の利用
+function scanSupabase(dir) {
+  const tables = new Set();
+  const withRls = new Set();
+  const bare = (name) => name.replace(/"/g, '').split('.').pop().toLowerCase();
+  for (const f of walkSql(dir).sort()) {
+    const sql = fs.readFileSync(f, 'utf8').replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const m of sql.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?([\w".]+)/gi)) tables.add(bare(m[1]));
+    for (const m of sql.matchAll(/alter\s+table\s+(?:only\s+)?(?:if\s+exists\s+)?([\w".]+)\s+enable\s+row\s+level\s+security/gi)) withRls.add(bare(m[1]));
+  }
+  const serviceRoleInClient = [];
+  for (const f of walk(dir)) {
+    const lines = fs.readFileSync(path.join(dir, f), 'utf8').split('\n');
+    const isClient = lines.slice(0, 5).some((l) => /^\s*['"]use client['"]/.test(l));
+    if (!isClient) continue;
+    lines.forEach((l, i) => { if (/SERVICE_ROLE/i.test(l)) serviceRoleInClient.push({ file: f, line: i + 1 }); });
+  }
+  const all = [...tables].sort();
+  return { tables: all, tablesWithoutRls: all.filter((t) => !withRls.has(t)), serviceRoleInClient };
+}
+
 function deployGuide(env) {
   const lines = ['## 公開（デプロイ）前に設定する環境変数', ''];
   if (env.names.length === 0) lines.push('環境変数は使われていません。');
@@ -176,6 +205,7 @@ async function runCheck({ dir, routes = ['/'], port = 3900, out, install = true,
   result.ok = result.problems.length === 0 && result.pages.length === routes.length;
   result.env = scanEnv(dir);
   result.hardcodedSecrets = scanSecrets(dir);
+  result.supabase = scanSupabase(dir);
   fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(result, null, 2));
   fs.writeFileSync(path.join(out, 'report.md'), renderReport(result));
   return result;
@@ -193,6 +223,16 @@ function renderReport(r) {
     L.push('', '## 危険: コードに直書きされた鍵', '');
     r.hardcodedSecrets.forEach((s) => L.push(`- ${s.file}:${s.line} ${s.kind}`));
   }
+  const sb = r.supabase || { tablesWithoutRls: [], serviceRoleInClient: [] };
+  if (sb.tablesWithoutRls.length) {
+    L.push('', '## 危険: 行レベルセキュリティ（RLS）が有効になっていないテーブル', '',
+      'このままだと、アプリの利用者が他人のデータを読み書きできるおそれがあります（SQL ファイルから判定。管理画面で直接設定している場合は対象外です）。', '');
+    sb.tablesWithoutRls.forEach((t) => L.push(`- ${t}`));
+  }
+  if (sb.serviceRoleInClient.length) {
+    L.push('', '## 危険: ブラウザ側のコードで管理者用の鍵（service_role）を使っています', '');
+    sb.serviceRoleInClient.forEach((x) => L.push(`- ${x.file}:${x.line}`));
+  }
   L.push('', deployGuide(r.env), '',
     '## この検査で確かめていないこと', '',
     '- ログイン後の画面、決済、メール送信など、鍵や外部サービスが必要な動作',
@@ -201,7 +241,7 @@ function renderReport(r) {
   return L.join('\n') + '\n';
 }
 
-module.exports = { detectPm, scanEnv, scanSecrets, deployGuide, runCheck, renderReport };
+module.exports = { detectPm, scanEnv, scanSecrets, scanSupabase, deployGuide, runCheck, renderReport };
 
 if (require.main === module) {
   const args = process.argv.slice(2);

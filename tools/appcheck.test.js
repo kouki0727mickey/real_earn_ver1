@@ -78,3 +78,44 @@ test('runCheck: 起動しないアプリは、理由つきで不合格にして�
   assert.equal(r.ok, false);
   assert.ok(r.problems.some((p) => p.kind === 'start'));
 });
+
+const { scanSupabase } = require('./appcheck');
+
+test('scanSupabase: RLS を有効にしていないテーブルを報告する', () => {
+  const d = tmp();
+  fs.mkdirSync(path.join(d, 'supabase', 'migrations'), { recursive: true });
+  fs.writeFileSync(path.join(d, 'supabase', 'migrations', '001.sql'), `
+create table public.profiles (id uuid primary key);
+CREATE TABLE IF NOT EXISTS orders (id bigint);
+create table "public"."notes" (id bigint);
+alter table public.profiles enable row level security;
+-- create table commented_out (id int);
+`);
+  fs.writeFileSync(path.join(d, 'supabase', 'migrations', '002.sql'), 'ALTER TABLE "public"."notes" ENABLE ROW LEVEL SECURITY;\n');
+  const r = scanSupabase(d);
+  assert.deepEqual(r.tablesWithoutRls, ['orders']);
+  assert.deepEqual(r.tables, ['notes', 'orders', 'profiles']);
+});
+
+test('scanSupabase: ブラウザ側のコードで service_role を使っている箇所を報告する', () => {
+  const d = tmp();
+  fs.mkdirSync(path.join(d, 'app'));
+  fs.writeFileSync(path.join(d, 'app', 'admin.tsx'), `"use client";\nconst k = process.env.SUPABASE_SERVICE_ROLE_KEY;\n`);
+  fs.writeFileSync(path.join(d, 'app', 'route.ts'), `const k = process.env.SUPABASE_SERVICE_ROLE_KEY;\n`);
+  const r = scanSupabase(d);
+  assert.deepEqual(r.serviceRoleInClient, [{ file: 'app/admin.tsx', line: 2 }]);
+});
+
+test('scanSupabase: SQL が無いアプリでは空の結果を返す', () => {
+  const r = scanSupabase(path.join(FX, 'app-ok'));
+  assert.deepEqual(r, { tables: [], tablesWithoutRls: [], serviceRoleInClient: [] });
+});
+
+test('renderReport: RLS なしのテーブルがあれば危険として載せる', () => {
+  const { renderReport } = require('./appcheck');
+  const text = renderReport({ ok: true, pm: 'npm', install: 'skipped', build: 'passed', pages: [], problems: [],
+    hardcodedSecrets: [], env: { names: [], hasExample: true, missingFromExample: [], exposedSecrets: [] },
+    supabase: { tables: ['orders'], tablesWithoutRls: ['orders'], serviceRoleInClient: [] } });
+  assert.match(text, /行レベルセキュリティ/);
+  assert.match(text, /orders/);
+});
